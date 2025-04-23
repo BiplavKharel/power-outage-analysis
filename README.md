@@ -87,7 +87,6 @@ The histogram shows a very right-skewed distribution, which is expected. Additio
 
 Overall, the result is expected as severe weather caused the most outages. But "intentional attack" being the second most common is very surprising. Intentional attack refers to a situation where officials determine that targeted human actions caused the outage. Additionally, the disribution of the bottom 5 categories are simliar so it will help during future model prediction.
 
-
  <iframe
  src="assets/heatmap.html"
  width="800"
@@ -95,10 +94,7 @@ Overall, the result is expected as severe weather caused the most outages. But "
  frameborder="0"
  ></iframe>
 
-
-
 You can see that the Midwest gets hit the worst when it comes to outage length. Places like Wisconsin and West Virginia have way longer average durations than most other states. That kind of pattern makes me think state info could actually help when predicting outage time. If some states always take longer to fix things, it’s probably worth including that in the model.
-
 
  <iframe
  src="assets/durCause.html"
@@ -109,3 +105,86 @@ You can see that the Midwest gets hit the worst when it comes to outage length. 
 
  Even though severe weather was the largest category causing outages, it isn't first in duration. Fuel supply emergencies have a significantly longer average outage duration. This again could help in the model. Also, the categories that had mean outage durations lasting more than a day were public appeal, equipment failure, severe weather, and fuel supply. The rest were usually resolved sooner.
 
+
+# Framing a Predicion Model
+
+ ## The Question: Based on the factors that are known at the start of a outage, how long will the power outage last?
+
+ What type of problem is this? 
+
+ This is going a regression problem, as we predciting a continous variable.
+
+How will this be tested?
+
+First we will create a training set, and and independent testing set. This will allow use to truly measure the accuary of our model. Using both mean squared error and mean absolute error.
+
+
+
+# A Basic Model
+
+Using the dataframe from earlier, a simple model was created.
+
+### Features Used in the Baseline Model
+
+The following features were used:
+
+- `YEAR`: The year the outage occurred.
+- `STATE`: The U.S. state where the outage occurred. (OHE)
+- `NERC.REGION`: The regional reliability entity associated with the outage. (OHE)
+- `CLIMATE.CATEGORY`: General climate classification of the region. (OHE)
+- `CAUSE.CATEGORY`: The main category of the outage cause. (OHE)
+- `Month`: The month in which the outage began. (OHE)
+- `POPULATION`: Population of the affected area.
+- `OUTAGE.START.HOUR`: The hour of the day when the outage started, extracted from the start time.
+
+(OHE) represents features that we One Hot Encoded
+
+## The Results:
+
+| Metric               |    Value |
+|:---------------------|---------:|
+| RMSE                 | 164.355  |
+| MAE                  |  74.5021 |
+| Mean Outage Duration |  46.198  |
+| TMSE                 | 108.876  |
+
+
+The model performed very badly, it was wrose than predicting the mean each time as the TMSE was better than the RMSE. This needs to be improved.
+
+
+# Final Model
+
+
+### Rethinking the Model:
+
+The first thing that comes to mind is multicollinearity, as several features in the model are highly correlated—such as `CAUSE.CATEGORY`, `CLIMATE.CATEGORY`, and `NERC.REGION`. This can cause unstable predictions that are overly generalized to the test set. 
+
+This means we either need to switch our features or use a different model. Ultimately, a different regression model was chosen. Instead of Linear Regression, a **Lasso Regression** was used. This decision was based on two reasons:
+
+1. Its ability to "turn off" irrelevant features by assigning them zero weights.
+2. Its ability to protect against multicollinearity by adding regularization to the coefficient matrix.
+
+### Feature Engineering
+
+In addition to the model being changed, two new features were created:
+
+- **Seasons**: As we saw during the EDA, the mean duration of outages tended to be more similar season to season rather than month to month. So, a feature called `Seasons` was created by mapping the month number to a specific season in the year.
+
+- **Time of Day**: Instead of relying on raw numeric predictions for the exact time of day an outage started, grouping the start hour into categories like `Morning`, `Afternoon`, and `Night` made more sense. The idea was that response time is likely more related to the general time of day than to the specific hour.
+
+### K Folds CV:
+
+Since the model was changed to Lasso, we needed to pick the optimal lambda so the model could perform its best. This led to using the GridSearchCV function, which allowed for k-fold cross-validation to find the best regularization strength.
+
+## The Results:
+
+Best alpha: 0.1
+| Metric               |    Value |
+|:---------------------|---------:|
+| RMSE                 |  99.485  |
+| MAE                  |  43.7279 |
+| Mean Outage Duration |  46.198  |
+| TMSE                 | 108.876  |
+
+
+The final Lasso regression model performed noticeably better than simply predicting the mean outage duration. The model achieved a Root Mean Squared Error (RMSE) of approximately 164.36 and a Mean Absolute Error (MAE) of about 74.50. This compares favorably to the Total Mean Squared Error (TMSE) baseline of 108.88, which represents the error if we had predicted the average outage duration for every instance. This shows that the model is capturing some underlying structure in the data beyond the mean.
