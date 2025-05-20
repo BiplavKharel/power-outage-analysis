@@ -179,6 +179,7 @@ Since the model was changed to Lasso, we needed to pick the optimal lambda so th
 ## The Results:
 
 Best alpha: 0.1
+
 | Metric               |    Value |
 |:---------------------|---------:|
 | RMSE                 |  99.485  |
